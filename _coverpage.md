@@ -3,9 +3,10 @@
 </p>
 <h1 align="center">懒猫技术栈</h1>
 
-[常用资源](https://shimo.im/docs/MuiACIg1HlYfVxrj/)
-[GitHub](https://github.com/Snailclimb/docsify-demo)
-[开始阅读](#docsify-demo)
+
+[GitHub](https://github.com/q2118cs/knowledge_node)
+[开始阅读](#消息队列)
+
 
 
 
