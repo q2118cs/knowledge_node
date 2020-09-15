@@ -81,4 +81,39 @@ rocketMQ持久化消息的时候都是先写入PageCache，然后刷盘，可以
 ## 消息重试
 
 1. 顺序消息：为了保证消息的顺序应用会出现消息消费被阻塞的情况，每隔1s会进行重试。
-2. 无序消息：
+
+2. 无序消息：只针对集群消息有效，广播方式不提供重试机制，默认每条消息最多重试16次，重试配置方式：
+
+   - 返回 ConsumeConcurrentlyStatus.RECONSUME_LATER; （推荐）
+   - 返回null
+   - 抛异常
+
+   如果想要不重试，则要捕获异常并返回ConsumeConcurrentlyStatus.CONSUME_SUCCESS。
+
+## 死信队列
+
+RocketMQ中消息重试超过一定次数后（默认16次）就会被放到死信队列中，死信队列不会被消费者再消费，有效期与正常消息相同为3天。一个死信队列对应一个groupId，并且包含了该groupId下所有的死信消息，不论消息属于哪个topic。
+
+## 延迟消息
+
+ broker有配置项messageDelayLevel，默认值为“1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h”，18个level。定时消息会暂存在名为SCHEDULE_TOPIC_XXXX的topic中，并根据delayTimeLevel存入特定的queue，queueId=delayTimeLevel – 1，即一个queue只存相同延迟的消息，保证具有相同发送延迟的消息能够顺序消费。
+
+## 顺序消息
+
+顺序消息分为全局顺序消息和部分顺序消息：全局顺序消息需要topic的读写队列都为1，producer和consumer并发数也都为1，为了保证有序性，只能单线程消费；一般使用的是部分有序，Consumer使用MessageListenerOrderly保证收到的消息是有序的
+
+## 事务消息
+
+RocketMQ可以做分布式事务，基于两阶段提交的方式，其执行步骤如下：
+
+- producer向mq发送一条“待确认”的消息；
+- mq将“待确认”消息持久化，向producer回复消息已经发送成功；
+- producer执行本地事务；
+- producer根据本地事务结果向mq发送commit还是rollback消息，如果是commit则mq将消息设置为可投递的属性，否则删除掉消息；如果mq一直没收到消息则会自动回查producer查看消息状态，默认回查15次。
+
+备注：由于mq是顺序写消息的，因此消息是不能被删除的，因此mq引入了Op消息，如果一条事务消息没有对应的Op消息，说明这个
+
+事务的状态还无法确定，事务commit还是rollback都会记录一个Op消息
+
+
+
