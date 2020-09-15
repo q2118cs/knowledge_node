@@ -19,5 +19,5 @@
 
 ### rocketmq
 
-1. **[rocketmq知识点总结](./docs/message_queue/rocketmq.md)**
+1. **[rocketmq知识点总结](./docs/message_queue/rocketmq_1.md)**
 
