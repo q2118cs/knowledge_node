@@ -92,3 +92,21 @@ thread.isInterrupted()与Thread.interrupted()的区别：都是线程用来判�
 链表和红黑树之间可以相互转换：初始的时候是链表，当链表中的元素超过某个阈值时，把链表转换成红黑树；反之，当红黑树中的元素个数小于某个阈值时，再转换为链表。
 
 使用红黑树，当一个槽里有很多元素时，其查询和更新速度会比链表快很多。加锁的粒度并非整个ConcurrentHashMap，而是对每个头节点分别加锁。
+
+## 同步工具类
+
+### Semaphore
+
+信号量，提供了资源数量的并发访问控制。底层基于AQS，有公平和非公平两种实现方式
+
+### CountDownLatch
+
+假设一个主线程要等待5个 Worker 线程执行完才能退出，可以使用CountDownLatch来实现。底层基于AQS，没有公平和非公平之分。
+
+### CyclicBarrier
+
+用于协调多个线程同步执行操作的场合。底层基于ReentrantLock+Condition实现。
+
+### Exchanger
+
+用于线程之间交换数据，其使用代码很简单，是一个exchange()方法。核心机制和Lock一样，也是CAS+park/unpark。Exchanger内部有两个内部类：Participant（继承ThreadLocal）和Node，每个线程在调用exchange()方法交换数据的时候，会先创建一个Node对象，这个Node对象就是对该线程的包装，里面包含了3个重要字段：第一个是该线程要交互的数据，第二个是对方线程交换来的数据，最后一个是该线程自身
