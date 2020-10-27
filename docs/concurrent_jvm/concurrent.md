@@ -109,4 +109,26 @@ thread.isInterrupted()与Thread.interrupted()的区别：都是线程用来判�
 
 ### Exchanger
 
-用于线程之间交换数据，其使用代码很简单，是一个exchange()方法。核心机制和Lock一样，也是CAS+park/unpark。Exchanger内部有两个内部类：Participant（继承ThreadLocal）和Node，每个线程在调用exchange()方法交换数据的时候，会先创建一个Node对象，这个Node对象就是对该线程的包装，里面包含了3个重要字段：第一个是该线程要交互的数据，第二个是对方线程交换来的数据，最后一个是该线程自身
+用于线程之间交换数据，其使用代码很简单，是一个exchange()方法。核心机制和Lock一样，也是CAS+park/unpark。Exchanger内部有两个内部类：Participant（继承ThreadLocal）和Node，每个线程在调用exchange()方法交换数据的时候，会先创建一个Node对象，这个Node对象就是对该线程的包装，里面包含了3个重要字段：第一个是该线程要交互的数据，第二个是对方线程交换来的数据，最后一个是该线程自身。
+
+## Lock和Condition
+
+### 互斥锁
+
+“可重入锁”是指当一个线程调用 object.lock()获取到锁，进入临界区后，再次调用object.lock()，仍然可以获取到该锁。显然，通常的锁都要设计成可重入的，否则就会发生死锁。synchronized关键字，就是可重入锁。
+
+**锁的基本原理**：Sync的父类AbstractQueuedSynchronizer经常被称作队列同步器（**AQS**），里面有几个核心要素
+
+1. 一个state变量，标记该锁的状态。state值不仅可以为0和1，还能大于1，大于1说明线程重入了该锁。对state变量的操作，使用CAS保证线程安全；
+2. 记录哪个线程持有锁；
+3. 底层支持对一个线程进行阻塞或唤醒操作，Unsafe类提供了park/unpark来进行阻塞或唤醒；
+4. 有一个队列维护所有阻塞线程，AQS使用双向链表和CAS实现了一个阻塞队列，这个队列是整个AQS的核心。
+
+### 读写锁
+
+读线程和读线程之间不互斥
+
+
+
+
+
