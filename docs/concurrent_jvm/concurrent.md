@@ -126,9 +126,44 @@ thread.isInterrupted()与Thread.interrupted()的区别：都是线程用来判�
 
 ### 读写锁
 
-读线程和读线程之间不互斥
+读线程和读线程之间不互斥，读读不互斥，读写互斥，写写互斥。ReadLock和WriteLock是两把锁，实际上它只是同一把锁的两个视图而已，读写锁也是用state变量来表示锁状态的，把 state 变量拆成两半，低16位用来记录写锁，高16位用来记录读锁。
 
+当state=0时，说明既没有线程持有读锁，也没有线程持有写锁；当state != 0时，要么有线程持有读锁，要么有线程持有写锁，两者不能同时成立，因为读和写互斥。这时再进一步通过sharedCount(state)和exclusiveCount(state)判断到底是读线程还是写线程持有了该锁。
 
+写锁是排他锁，实现策略类似于互斥锁。读锁是共享锁，其实现策略和排他锁有很大的差异。因为读锁是共享锁，多个线程会同时持有读锁，所以对读锁的释放不能直接减1，而是需要通过一个for循环+CAS操作不断重试。
 
+### StampedLock
 
+| 锁                     | 并发度                           |
+| ---------------------- | -------------------------------- |
+| ReentrantLock          | 读读互斥，读写互斥，写写互斥     |
+| ReentrantReadWriteLock | 读读不互斥，读写互斥，写写互斥   |
+| StampedLock            | 读读不互斥，读写不互斥，写写互斥 |
 
+StampedLock是在JDK8中新增的，StampedLock引入了“乐观读”策略，读的时候不加读锁，读出来发现数据被修改了，再升级为“悲观
+读”。StampedLock是一个读写锁，因此也会像读写锁那样，把一个state变量分成两半，分别表示读锁和写锁的状态。同时，它还需要一个数据的version。但是，一次CAS没有办法操作两个变量，所以这个state变量本身同时也表示了数据的version。用最低的8位表示读和写的状态，其中第8位表示写锁的状态，最低的7位表示读锁的状态。因为写锁只有一个bit位，所以写锁是不可重入的。
+
+StampedLock也要进行悲观的读锁和写锁操作。不过，它不是基于AQS实现的，而是内部重新实现了一个阻塞队列，基于这个阻塞队列实现的锁的调度策略和AQS很不一样，在AQS里面，当一个线程CAS state失败之后，会立即加入阻塞队列，并且进入阻塞状态，但在StampedLock中，CAS state失败之后，会不断自旋，自旋足够多的次数之后，如果还拿不到锁，才进入阻塞状态。
+
+# 线程池
+
+核心参数：
+
+1. corePoolSize：在线程池中始终维护的线程个数。
+2. maxPoolSize：在corePooSize已满、队列也满的情况下，扩充线程至此值。
+3. keepAliveTime/TimeUnit：maxPoolSize 中的空闲线程，销毁所需要的时间，总线程数收缩回corePoolSize。
+4. blockingQueue：线程池所用的队列类型。
+5. threadFactory：线程创建工厂，可以自定义，有默认值Executors.defaultThreadFactory() 。
+6. RejectedExecutionHandler：corePoolSize已满，队列已满，maxPoolSize 已满，最后的拒绝策略。
+
+在JDK 7中，把线程数量（workerCount）和线程池状态（runState）这两个变量打包存储在一个字段里面，即ctl变量。如下图所示，最高的3位存储线程池状态，其余29位存储线程个数。而在JDK 6中，这两个变量是分开存储的。
+
+![image-20201027211425850](concurrent.assets/image-20201027211425850.png)
+
+线程池的状态有五种，分别是RUNNING、SHUTDOWN、STOP、TIDYING和TERMINATED
+
+![image-20201027211520636](concurrent.assets/image-20201027211520636.png)
+
+线程池有两个关闭方法，shutdown()和shutdownNow()，这两个方法会让线程池切换到不同的状态。在队列为空，线程池也为空之后，进入TIDYING 状态；最后执行一个钩子方法terminated()，进入TERMINATED状态，线程池才真正关闭。
+
+在调用 shutdown()或者shutdownNow()之后，线程池并不会立即关闭，接下来需要调用 awaitTermination() 来等待线程池关闭。
